@@ -1,0 +1,10 @@
+venv
+deps
+inet-ebpf.c
+inet-tool
+__pycache__
+*.gcda
+*.gcno
+cov_html
+cov.info
+*.gcno.info
