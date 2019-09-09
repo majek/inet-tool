@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "../ebpf/inet-kern-shared.h"
@@ -394,5 +396,21 @@ void parse_inet_addr(struct inet_addr *addr, char *protocol, char *host)
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&addr->ss;
 		clear_net_bottombits((uint8_t *)&sin6->sin6_addr,
 				     sizeof(sin6->sin6_addr), bottombits);
+	}
+}
+
+void bump_memlimit()
+{
+	/* [*] SOCKMAP requires more than 16MiB of locked mem */
+
+	struct rlimit rlim_inf = {RLIM_INFINITY, RLIM_INFINITY};
+	int r = setrlimit(RLIMIT_MEMLOCK, &rlim_inf);
+	if (r != 0) {
+		struct rlimit rlim = {
+			.rlim_cur = 128 * 1024 * 1024,
+			.rlim_max = 128 * 1024 * 1024,
+		};
+		/* ignore error */
+		setrlimit(RLIMIT_MEMLOCK, &rlim);
 	}
 }

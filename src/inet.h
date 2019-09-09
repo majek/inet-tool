@@ -71,6 +71,8 @@ struct addr *parse_addr(char *txt_addr, struct addr *localaddr);
 void parse_inet_addr(struct inet_addr *addr, char *protocol, char *host);
 int get_bottombits(struct sockaddr_storage *ss, int subnet);
 
+void bump_memlimit();
+
 /* misc */
 #ifdef CODE_COVERAGE
 void __gcov_flush(void);

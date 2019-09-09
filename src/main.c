@@ -58,6 +58,8 @@ int main(int argc, char *argv[])
 	snprintf(state->sys_fs_map_prefix, sizeof(state->sys_fs_map_prefix),
 		 "/sys/fs/bpf/%lu_", net_ns_inode);
 
+	bump_memlimit();
+
 	/* Split argv into two parts - before and after -- *
 	 * getopt_long() does an interesting thing. It removes the
 	 * first iteration of "--" argument. The semantics are: on the

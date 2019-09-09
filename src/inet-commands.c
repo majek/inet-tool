@@ -68,7 +68,7 @@ void inet_load(struct state *state)
 				if (errno == EPERM) {
 					fprintf(stderr,
 						"[!] Are you root? Do you have "
-						"enough \"memlock\" "
+						"enough memlock "
 						"resources?\n");
 					fprintf(stderr,
 						"[!] Try running \"ulimit -l "
@@ -108,6 +108,14 @@ void inet_load(struct state *state)
 		bpf_load_program_xattr(&load_attr, log_buf, sizeof(log_buf));
 
 	if (bpf_prog < 0) {
+		if (errno == EPERM) {
+			fprintf(stderr,
+				"[!] Are you root? Do you have enough memlock "
+				"resources?\n");
+			fprintf(stderr,
+				"[!] Try running \"ulimit -l unlimited\" "
+				"before\n");
+		}
 		PFATAL("Bpf Log:\n%s\n bpf(BPF_PROG_LOAD)", log_buf);
 	}
 
