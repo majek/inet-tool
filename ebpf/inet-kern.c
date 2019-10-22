@@ -1,10 +1,10 @@
-#include "linux_bpf.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/socket.h>
 
-#include "bpf_endian.h"
-#include "bpf_helpers.h"
+#include <linux/bpf.h>
+#include <bpf/bpf_endian.h>
+#include <bpf/bpf_helpers.h>
 
 #include "inet-kern-shared.h"
 

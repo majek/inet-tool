@@ -1,11 +1,36 @@
-KERNEL_DIR ?= /lib/modules/`uname -r`/build
+CLANG      ?= clang
+KERNEL_DIR ?=
+
+HOST_ARCH = $(shell uname -m)-linux-gnu
+
+ifeq ($(KERNEL_DIR),)
+# Build against system packages.
+#
+# On Debian:
+#
+#   $ apt install linux-libc-dev libbpf-dev
+#
+LINUX_INC_DIR  = /usr/include
+LIBBPF_INC_DIR = /usr/include
+LIBBPF_LIB_DIR = /usr/lib/$(HOST_ARCH)
+else
+# Build against kernel source tree.
+#
+# Prepare headers and build libbpf:
+#
+#   $ make headers_install && make -C tools/lib/bpf
+#
+LINUX_INC_DIR  = $(KERNEL_DIR)/usr/include
+LIBBPF_INC_DIR = $(KERNEL_DIR)/tools/lib
+LIBBPF_LIB_DIR = $(KERNEL_DIR)/tools/lib/bpf
+endif
 
 # make: by default build inet-tool
 all: venv/.ok inet-tool
 
 .PHONY: check_kernel
 check_kernel:
-ifeq ("$(shell grep BPF_INET_LOOKUP $(KERNEL_DIR)/include/uapi/linux/bpf.h)","")
+ifeq ("$(shell grep BPF_INET_LOOKUP $(LINUX_INC_DIR)/linux/bpf.h)","")
 	$(error KERNEL_DIR must point to kernel with INET_LOOKUP patches)
 endif
 
@@ -14,28 +39,38 @@ endif
 # Let the ebpf program version be its source checksum.
 EBPF_VERSION := $(shell cat ebpf/*.[ch]|sort|sha1sum |cut -c 1-8)
 
-DEPS_H=deps/libbpf.h deps/libbpf_ebpf.h deps/linux_bpf.h deps/bpf_helpers.h deps/bpf_endian.h
-DEPS=deps/libbpf.a $(DEPS_H)
+DEPS_H = \
+	$(LINUX_INC_DIR)/linux/bpf.h \
+	$(LIBBPF_INC_DIR)/bpf/bpf.h \
+	$(LIBBPF_INC_DIR)/bpf/libbpf.h \
+	$(LIBBPF_INC_DIR)/bpf/bpf_endian.h \
+	$(LIBBPF_INC_DIR)/bpf/bpf_helpers.h
+
+DEPS     = $(LIBBPF_LIB_DIR)/libbpf.a $(DEPS_H)
+INCLUDES = -I$(LINUX_INC_DIR) -I$(LIBBPF_INC_DIR)
 
 INET_TOOL_DEPS=src/*.[ch] $(DEPS) inet-ebpf.c Makefile ebpf/*shared*
+
 inet-tool: $(INET_TOOL_DEPS)
-	clang -g -Wall -Wextra -O2 \
+	$(CLANG) -g -Wall -Wextra -O2 \
 		$(EXTRA_CFLAGS) \
-		-I deps \
+		$(INCLUDES) \
 		src/tbpf.c \
 		src/main.c \
 		src/inet-commands.c \
 		src/utils.c \
 		inet-ebpf.c \
 		src/inet-scm.c \
-		deps/libbpf.a \
+		$(LIBBPF_LIB_DIR)/libbpf.a \
 		-D INET_PROGRAM_VERSION=\"inet_$(EBPF_VERSION)\" \
 		-l elf \
 		-o $@
 
+$(DEPS): check_kernel
+
 inet-ebpf.c: ebpf/*.[ch] tbpf-decode-elf.py $(DEPS_H) ebpf/*shared*
-	clang -Wall -Wextra -O2 --target=bpf -c \
-		-I deps \
+	$(CLANG) -Wall -Wextra -O2 --target=bpf -c \
+		$(INCLUDES) \
 		ebpf/inet-kern.c \
 		-o - \
 		| ./venv/bin/python3 tbpf-decode-elf.py /dev/stdin \
@@ -53,33 +88,6 @@ venv/.ok:
 	virtualenv venv --python=python3
 	./venv/bin/pip3 install pyelftools
 	touch $@
-
-deps/libbpf.a:
-	$(MAKE) check_kernel
-	$(MAKE) -C $(KERNEL_DIR)/tools/lib/bpf libbpf.a
-	cp $(KERNEL_DIR)/tools/lib/bpf/libbpf.a $@
-
-deps/libbpf.h:
-	$(MAKE) check_kernel
-	$(MAKE) -C $(KERNEL_DIR)/tools/lib/bpf libbpf.h
-	cp $(KERNEL_DIR)/tools/lib/bpf/libbpf.h $@
-	sed -i -s 's|<linux/bpf.h>|"linux_bpf.h"|g' $@
-
-deps/libbpf_ebpf.h:
-	$(MAKE) check_kernel
-	$(MAKE) -C $(KERNEL_DIR)/tools/lib/bpf bpf.h
-	cp $(KERNEL_DIR)/tools/lib/bpf/bpf.h $@
-	sed -i -s 's|<linux/bpf.h>|"linux_bpf.h"|g' $@
-
-deps/linux_bpf.h:
-	$(MAKE) check_kernel
-	cp $(KERNEL_DIR)/include/uapi/linux/bpf.h $@
-deps/bpf_helpers.h:
-	$(MAKE) check_kernel
-	cp $(KERNEL_DIR)/tools/testing/selftests/bpf/bpf_helpers.h $@
-deps/bpf_endian.h:
-	$(MAKE) check_kernel
-	cp $(KERNEL_DIR)/tools/testing/selftests/bpf/bpf_endian.h $@
 
 # make format
 .PHONY: format
