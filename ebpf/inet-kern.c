@@ -1,5 +1,4 @@
-#include <stdint.h>
-#include <stdio.h>
+#include <stddef.h>
 #include <sys/socket.h>
 
 #include <linux/bpf.h>
@@ -17,8 +16,8 @@ int _inet_program(struct bpf_inet_lookup *ctx)
 {
 	/* Force 32 bit loads from context, to avoid eBPF "ctx modified"
 	 * messages */
-	volatile uint32_t protocol = ctx->protocol;
-	volatile uint32_t local_port = ctx->local_port;
+	volatile __u32 protocol = ctx->protocol;
+	volatile __u32 local_port = ctx->local_port;
 
 	/* /32 and /128 */
 	struct ip laddr_full = {};
@@ -64,7 +63,7 @@ int _inet_program(struct bpf_inet_lookup *ctx)
 		srvname =
 			(struct srvname *)bpf_map_lookup_elem(&bind_map, &key);
 		if (srvname != NULL) {
-			uint32_t *index = (uint32_t *)bpf_map_lookup_elem(
+			__u32 *index = (__u32 *)bpf_map_lookup_elem(
 				&srvname_map, srvname);
 			if (index != NULL) {
 				int r = bpf_redirect_lookup(ctx, &redir_map,
