@@ -11,8 +11,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "libbpf_ebpf.h"
-#include "linux_bpf.h"
+#include <linux/bpf.h>
+#include <bpf/bpf.h>
 
 #include "inet.h"
 

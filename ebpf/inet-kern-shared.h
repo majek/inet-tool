@@ -1,9 +1,11 @@
+#include <linux/types.h>
+
 struct addr {
-	uint32_t prefixlen;
-	uint8_t protocol;
-	uint16_t port;
+	__u32 prefixlen;
+	__u8 protocol;
+	__u16 port;
 	struct ip {
-		uint32_t ip_as_w[4];
+		__u32 ip_as_w[4];
 	} addr;
 };
 

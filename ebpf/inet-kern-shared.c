@@ -1,8 +1,8 @@
 struct bpf_map_def SEC("maps") redir_map = {
-	.type = BPF_MAP_TYPE_REUSEPORT_SOCKARRAY,
+	.type = BPF_MAP_TYPE_SOCKMAP,
 	.max_entries = 512,
-	.key_size = sizeof(uint32_t),
-	.value_size = sizeof(uint64_t),
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
 };
 
 struct bpf_map_def SEC("maps") bind_map = {
@@ -17,6 +17,6 @@ struct bpf_map_def SEC("maps") srvname_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.max_entries = 512,
 	.key_size = sizeof(struct srvname),
-	.value_size = sizeof(uint32_t),
+	.value_size = sizeof(__u32),
 	.map_flags = BPF_F_NO_PREALLOC,
 };
