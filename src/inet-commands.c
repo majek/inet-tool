@@ -426,11 +426,6 @@ void inet_register(struct state *state, char **fdnames, char **srvnames)
 
 			int r = inet_register_socket(state, fd, name);
 			if (r == -1) {
-				fprintf(stderr,
-					"[!] Socket must have SO_REUSEPORT "
-					"set!\n");
-			}
-			if (r == -2) {
 				fprintf(stderr, "[!] redir_map full!\n");
 			}
 
@@ -470,15 +465,6 @@ void inet_unregister(struct state *state, char *service)
 
 int inet_register_socket(struct state *state, int fd, char *fdname)
 {
-	if (fd >= 0) {
-		int o = 0;
-		socklen_t l = sizeof(int);
-		getsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &o, &l);
-		if (o != 1) {
-			return -1;
-		}
-	}
-
 	struct srvname srvname = {};
 	strncpy(srvname.name, fdname, sizeof(srvname.name));
 
@@ -530,7 +516,7 @@ int inet_register_socket(struct state *state, int fd, char *fdname)
 	}
 
 	if (redir_index == UINT_MAX) {
-		return -2;
+		return -1;
 	}
 
 	if (fd >= 0) {

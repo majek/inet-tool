@@ -155,10 +155,6 @@ void inet_scm_serve(struct state *state)
 
 		r = inet_register_socket(state, fd, fdname);
 		if (r == -1) {
-			fprintf(stderr,
-				"[!] Socket must have SO_REUSEPORT set!\n");
-		}
-		if (r == -2) {
 			fprintf(stderr, "[!] redir_map full!\n");
 		}
 		close(fd);
