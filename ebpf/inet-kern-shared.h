@@ -9,8 +9,9 @@ struct addr {
 	} addr;
 };
 
+/* FD names passed by systemd can be 255 characters long. Match the limit. */
 struct srvname {
-	char name[32];
+	char name[255];
 };
 
 enum { REDIR_MAP,
