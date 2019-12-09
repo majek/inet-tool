@@ -2,6 +2,7 @@ CLANG      ?= clang
 KERNEL_DIR ?=
 
 HOST_ARCH = $(shell uname -m)-linux-gnu
+LIBC_INC_DIR = /usr/include/$(HOST_ARCH)
 
 ifeq ($(KERNEL_DIR),)
 # Build against system packages.
@@ -47,7 +48,7 @@ DEPS_H = \
 	$(LIBBPF_INC_DIR)/bpf/bpf_helpers.h
 
 DEPS     = $(LIBBPF_LIB_DIR)/libbpf.a $(DEPS_H)
-INCLUDES = -I$(LINUX_INC_DIR) -I$(LIBBPF_INC_DIR)
+INCLUDES = -I$(LIBC_INC_DIR) -I$(LINUX_INC_DIR) -I$(LIBBPF_INC_DIR)
 
 INET_TOOL_DEPS=src/*.[ch] $(DEPS) inet-ebpf.c Makefile ebpf/*shared*
 
