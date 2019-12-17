@@ -64,7 +64,7 @@ inet-tool: $(INET_TOOL_DEPS)
 		src/inet-scm.c \
 		$(LIBBPF_LIB_DIR)/libbpf.a \
 		-D INET_PROGRAM_VERSION=\"inet_$(EBPF_VERSION)\" \
-		-l elf \
+		-lelf -lz \
 		-o $@
 
 $(DEPS): check_kernel
