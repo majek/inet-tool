@@ -2,7 +2,7 @@ struct bpf_map_def SEC("maps") redir_map = {
 	.type = BPF_MAP_TYPE_SOCKMAP,
 	.max_entries = 512,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(__u32),
+	.value_size = sizeof(__u64),
 };
 
 struct bpf_map_def SEC("maps") bind_map = {
