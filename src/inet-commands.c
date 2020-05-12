@@ -97,6 +97,7 @@ void inet_load(struct state *state)
 	char log_buf[16 * 1024];
 	struct bpf_load_program_attr load_attr = {
 		.prog_type = BPF_PROG_TYPE_SK_LOOKUP,
+		.expected_attach_type = BPF_SK_LOOKUP,
 		.insns = ebpf_program.insn,
 		.insns_cnt = *ebpf_program.insn_cnt,
 		.license = "Dual BSD/GPL",
