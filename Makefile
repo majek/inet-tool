@@ -114,5 +114,5 @@ test: inet-tool-test
 clean:
 	rm -f inet-tool deps/* inet-ebpf.c
 	rm -rf venv tests/__pycache__
-	rm -r inet-tool-test *.gcno
+	rm -rf inet-tool-test *.gcno
 	rm -rf *.gcda cov_html cov.info
