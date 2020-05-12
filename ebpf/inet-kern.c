@@ -11,8 +11,8 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
-SEC("inet_program")
-int _inet_program(struct bpf_inet_lookup *ctx)
+SEC("sk_lookup")
+int _sk_lookup(struct bpf_sk_lookup *ctx)
 {
 	/* Force 32 bit loads from context, to avoid eBPF "ctx modified"
 	 * messages */

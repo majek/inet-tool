@@ -34,9 +34,9 @@ char *ebpf_maps_names[] = {
 	"srvname_map",
 };
 
-extern size_t bpf_insn_inet_program_cnt;
-extern struct bpf_insn bpf_insn_inet_program[];
-extern struct tbpf_reloc bpf_reloc_inet_program[];
+extern size_t bpf_insn_sk_lookup_cnt;
+extern struct bpf_insn bpf_insn_sk_lookup[];
+extern struct tbpf_reloc bpf_reloc_sk_lookup[];
 
 struct {
 	char *name;
@@ -45,9 +45,9 @@ struct {
 	struct tbpf_reloc *reloc;
 } ebpf_program = {
 	INET_PROGRAM_VERSION,
-	bpf_insn_inet_program,
-	&bpf_insn_inet_program_cnt,
-	bpf_reloc_inet_program,
+	bpf_insn_sk_lookup,
+	&bpf_insn_sk_lookup_cnt,
+	bpf_reloc_sk_lookup,
 };
 
 void inet_load(struct state *state)
@@ -96,7 +96,7 @@ void inet_load(struct state *state)
 	/* prog load */
 	char log_buf[16 * 1024];
 	struct bpf_load_program_attr load_attr = {
-		.prog_type = BPF_PROG_TYPE_INET_LOOKUP,
+		.prog_type = BPF_PROG_TYPE_SK_LOOKUP,
 		.insns = ebpf_program.insn,
 		.insns_cnt = *ebpf_program.insn_cnt,
 		.license = "Dual BSD/GPL",
@@ -119,23 +119,23 @@ void inet_load(struct state *state)
 		PFATAL("Bpf Log:\n%s\n bpf(BPF_PROG_LOAD)", log_buf);
 	}
 
-	int r = bpf_prog_attach(bpf_prog, 0, BPF_INET_LOOKUP, 0);
+	int r = bpf_prog_attach(bpf_prog, 0, BPF_SK_LOOKUP, 0);
 	if (r) {
 		if (errno == EEXIST) {
 			fprintf(stderr,
-				"[-] Unloading previous INET LOOKUP "
+				"[-] Unloading previous SK_LOOKUP "
 				"program\n");
 			// BPF_F_ALLOW_OVERRIDE doesn't work
-			bpf_prog_detach2(0, 0, BPF_INET_LOOKUP);
+			bpf_prog_detach2(0, 0, BPF_SK_LOOKUP);
 
 			/* Try again */
-			r = bpf_prog_attach(bpf_prog, 0, BPF_INET_LOOKUP, 0);
+			r = bpf_prog_attach(bpf_prog, 0, BPF_SK_LOOKUP, 0);
 		}
 		if (r) {
-			PFATAL("bpf(BPF_ATTACH, BPF_INET_LOOKUP)");
+			PFATAL("bpf(BPF_ATTACH, BPF_SK_LOOKUP)");
 		}
 	}
-	printf("INET_LOOKUP program loaded\n");
+	printf("SK_LOOKUP program loaded\n");
 }
 
 void inet_open_verify_maps(struct state *state, int all_needed)
@@ -211,10 +211,10 @@ static int get_prog_info(struct prog_info *prog_info)
 	uint32_t prog_ids[1] = {0};
 	uint32_t prog_cnt = 1;
 
-	int r = bpf_prog_query(ns_fd, BPF_INET_LOOKUP, 0, &attach_flags,
+	int r = bpf_prog_query(ns_fd, BPF_SK_LOOKUP, 0, &attach_flags,
 			       prog_ids, &prog_cnt);
 	if (r) {
-		PFATAL("bpf(PROG_QUERY, BPF_INET_LOOKUP)");
+		PFATAL("bpf(PROG_QUERY, BPF_SK_LOOKUP)");
 	}
 	close(ns_fd);
 
@@ -245,7 +245,7 @@ int inet_prog_info(struct state *state)
 	int i = get_prog_info(&prog_info);
 
 	if (i == 1) {
-		printf("[+] INET_LOOKUP program present\n");
+		printf("[+] SK_LOOKUP program present\n");
 		int recognized =
 			strcmp(prog_info.bpi.name, ebpf_program.name) == 0;
 		printf("[+] name: %s  (%s)\n", prog_info.bpi.name,
@@ -276,7 +276,7 @@ int inet_prog_info(struct state *state)
 		       prog_info.bpi.run_cnt, prog_info.bpi.run_time_ns);
 	}
 	if (i == 0) {
-		printf("INET_LOOKUP program absent\n");
+		printf("SK_LOOKUP program absent\n");
 		return 1;
 	}
 	return 0;
@@ -306,19 +306,19 @@ int inet_unload(struct state *state)
 	uint32_t prog_ids[1] = {0};
 	uint32_t prog_cnt = 1;
 
-	int r = bpf_prog_query(fd, BPF_INET_LOOKUP, 0, &attach_flags, prog_ids,
+	int r = bpf_prog_query(fd, BPF_SK_LOOKUP, 0, &attach_flags, prog_ids,
 			       &prog_cnt);
 	if (r) {
-		PFATAL("bpf(PROG_QUERY, BPF_INET_LOOKUP)");
+		PFATAL("bpf(PROG_QUERY, BPF_SK_LOOKUP)");
 	}
 	close(fd);
 
 	// BPF_F_ALLOW_OVERRIDE doesn't work
-	r = bpf_prog_detach2(0, 0, BPF_INET_LOOKUP);
+	r = bpf_prog_detach2(0, 0, BPF_SK_LOOKUP);
 	if (r == 0) {
-		printf("[+] INET_LOOKUP program unloaded\n");
+		printf("[+] SK_LOOKUP program unloaded\n");
 	} else {
-		printf("[-] Failed to unload INET_LOOKUP: %s\n",
+		printf("[-] Failed to unload SK_LOOKUP: %s\n",
 		       strerror(errno));
 		return_code = 1;
 	}

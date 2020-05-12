@@ -2,7 +2,7 @@
 inet-tool
 ---------
 
-The tool to manage INET_LOOKUP program.
+The tool to manage SK_LOOKUP program.
 
 Dependencies:
 
@@ -18,7 +18,7 @@ Dependencies:
 
 Clang is needed to compile C into the eBPF program.
 
-First, you need to run experimental kernel with INET_LOOKUP
+First, you need to run experimental kernel with SK_LOOKUP
 patches. For example:
 
     cd /tmp
