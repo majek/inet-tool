@@ -26,37 +26,37 @@ class BasicTest(base.TestCase):
     def test_basic_lifecycle(self):
         ''' Verify 'info' before and after 'load', verify 'unload' '''
         p = base.inet_tool('info')
-        self.assertIn("INET_LOOKUP program absent", p.stdout_line())
+        self.assertIn("SK_LOOKUP program absent", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 1)
 
         p = base.inet_tool('load')
-        self.assertIn("INET_LOOKUP program loaded", p.stdout_line())
+        self.assertIn("SK_LOOKUP program loaded", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 0)
 
         p = base.inet_tool('load')
-        self.assertIn("INET_LOOKUP program loaded", p.stdout_line())
+        self.assertIn("SK_LOOKUP program loaded", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 0)
 
         p = base.inet_tool('info')
-        self.assertIn("INET_LOOKUP program present", p.stdout_line())
+        self.assertIn("SK_LOOKUP program present", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 0)
 
         p = base.inet_tool('unload')
-        self.assertIn("INET_LOOKUP program unloaded", p.stdout_line())
+        self.assertIn("SK_LOOKUP program unloaded", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 0)
 
         p = base.inet_tool('info')
-        self.assertIn("INET_LOOKUP program absent", p.stdout_line())
+        self.assertIn("SK_LOOKUP program absent", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 1)
 
         p = base.inet_tool('unload')
-        self.assertIn("Failed to unload INET_LOOKUP: No such", p.stdout_line())
+        self.assertIn("Failed to unload SK_LOOKUP: No such", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 1)
 
@@ -64,7 +64,7 @@ class BasicTest(base.TestCase):
     def test_basic_tcp_bind(self):
         ''' Veify creation and removal of simple tcp binding '''
         p = base.inet_tool('load')
-        self.assertIn("INET_LOOKUP program loaded", p.stdout_line())
+        self.assertIn("SK_LOOKUP program loaded", p.stdout_line())
 
         svcs, bdgs = self.inet_tool_list()
         self.assertFalse(svcs)

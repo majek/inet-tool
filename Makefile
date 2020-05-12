@@ -31,8 +31,8 @@ all: venv/.ok inet-tool
 
 .PHONY: check_kernel
 check_kernel:
-ifeq ("$(shell grep BPF_INET_LOOKUP $(LINUX_INC_DIR)/linux/bpf.h)","")
-	$(error KERNEL_DIR must point to kernel with INET_LOOKUP patches)
+ifeq ("$(shell grep BPF_SK_LOOKUP $(LINUX_INC_DIR)/linux/bpf.h)","")
+	$(error KERNEL_DIR must point to kernel with SK_LOOKUP patches)
 endif
 
 ##VERSION := $(shell git describe --tags --always --dirty="-dev")
@@ -75,7 +75,7 @@ inet-ebpf.c: ebpf/*.[ch] tbpf-decode-elf.py $(DEPS_H) ebpf/*shared*
 		ebpf/inet-kern.c \
 		-o - \
 		| ./venv/bin/python3 tbpf-decode-elf.py /dev/stdin \
-			inet_program \
+			sk_lookup \
 		> $@
 
 inet-tool-test: $(INET_TOOL_DEPS)
@@ -114,5 +114,5 @@ test: inet-tool-test
 clean:
 	rm -f inet-tool deps/* inet-ebpf.c
 	rm -rf venv tests/__pycache__
-	rm -r inet-tool-test *.gcno
+	rm -rf inet-tool-test *.gcno
 	rm -rf *.gcda cov_html cov.info

@@ -11,8 +11,8 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
-SEC("inet_program")
-int _inet_program(struct bpf_inet_lookup *ctx)
+SEC("sk_lookup")
+int _sk_lookup(struct bpf_sk_lookup *ctx)
 {
 	/* Force 32 bit loads from context, to avoid eBPF "ctx modified"
 	 * messages */
@@ -66,11 +66,33 @@ int _inet_program(struct bpf_inet_lookup *ctx)
 			__u32 *index = (__u32 *)bpf_map_lookup_elem(
 				&srvname_map, srvname);
 			if (index != NULL) {
-				int r = bpf_redirect_lookup(ctx, &redir_map,
-							    index, 0);
-				if (r == BPF_REDIRECT) {
-					return BPF_REDIRECT;
+				struct bpf_sock *sk = bpf_map_lookup_elem(&redir_map, index);
+				if (!sk) {
+					 /* Service for the address registered,
+					  * but socket is missing (service
+					  * down?). Drop connections so they
+					  * don't end up in some other socket
+					  * bound to the address/port reserved
+					  * for this service.
+					  */
+					return BPF_DROP;
 				}
+				int err = bpf_sk_assign(ctx, sk, 0);
+				if (err) {
+					/* Same as for no socket case above,
+					 * except here socket is not compatible
+					 * with the IP family or L4 transport
+					 * for the address/port it is mapped
+					 * to. Service misconfigured.
+					 */
+					bpf_sk_release(sk);
+					return BPF_DROP;
+				}
+
+				/* Found and selected a suitable socket. Direct
+				 * the incoming connection to it. */
+				bpf_sk_release(sk);
+				return BPF_REDIRECT;
 			}
 		}
 	}

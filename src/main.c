@@ -178,14 +178,14 @@ int main(int argc, char *argv[])
 	int recognized = inet_prog_verify();
 	if (recognized == -1) {
 		fprintf(stderr,
-			"[!] INET_LOOKUP program not found. "
+			"[!] SK_LOOKUP program not found. "
 			"Consdider running \"inet-tool load\".\n");
 		exit(-1);
 	}
 
 	if (recognized == 0) {
 		fprintf(stderr,
-			"[!] INET_LOOKUP program version is "
+			"[!] SK_LOOKUP program version is "
 			"unrecognized. "
 			"Consdider running \"inet-tool unload; inet-tool "
 			"load\"\n");
