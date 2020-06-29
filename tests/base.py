@@ -14,6 +14,7 @@ INETTOOLBIN = os.environ.get('INETTOOLBIN')
 IP_FREEBIND = 15
 CLONE_NEWNET = 0x40000000
 original_net_ns = open("/proc/self/ns/net", 'rb')
+SOCKET_TIMEOUT = 5 # seconds
 
 HELLO_WORLD_SERVER='./tools/hello-world-server.py'
 
@@ -132,7 +133,7 @@ class TestCase(unittest.TestCase):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        s.settimeout(2)
+        s.settimeout(SOCKET_TIMEOUT)
 
         with self.assertRaises(socket.error) as e:
             s.connect((ip, port))
@@ -144,7 +145,7 @@ class TestCase(unittest.TestCase):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        s.settimeout(2)
+        s.settimeout(SOCKET_TIMEOUT)
 
         s.connect((ip, port))
         s.close()
@@ -154,7 +155,7 @@ class TestCase(unittest.TestCase):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
             s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        s.settimeout(2)
+        s.settimeout(SOCKET_TIMEOUT)
 
         s.connect((ip, port))
         data = s.recv(2048)
@@ -184,7 +185,7 @@ def bind_tcp(ip='127.0.0.1', port=0, cloexec=True, reuseaddr=True, reuseport=Tru
     else:
         s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 
-    s.settimeout(2)
+    s.settimeout(SOCKET_TIMEOUT)
 
     if cleanup:
         RUN_CMD_BUFFER.append(("bind_tcp", s))
