@@ -220,7 +220,7 @@ class BasicTest(base.TestCase):
         base.inet_tool('unbind 6 [8000:]/1:0').close()
 
 
-    def test_basic_tcp_regiser(self):
+    def test_basic_tcp_register(self):
         ''' Verify if register and command work '''
         base.inet_tool('load').close()
         base.inet_tool('bind 6 127.0.0.1:1234 x').close()
