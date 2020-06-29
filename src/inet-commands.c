@@ -298,24 +298,8 @@ int inet_prog_verify()
 int inet_unload(struct state *state)
 {
 	int return_code = 0;
-	int fd = open("/proc/self/ns/net", O_RDONLY);
-	if (fd < 0) {
-		PFATAL("open(/proc/self/ns/net)");
-	}
 
-	uint32_t attach_flags = 0;
-	uint32_t prog_ids[1] = {0};
-	uint32_t prog_cnt = 1;
-
-	int r = bpf_prog_query(fd, BPF_SK_LOOKUP, 0, &attach_flags, prog_ids,
-			       &prog_cnt);
-	if (r) {
-		PFATAL("bpf(PROG_QUERY, BPF_SK_LOOKUP)");
-	}
-	close(fd);
-
-	// BPF_F_ALLOW_OVERRIDE doesn't work
-	r = bpf_prog_detach2(0, 0, BPF_SK_LOOKUP);
+	int r = bpf_prog_detach2(0, 0, BPF_SK_LOOKUP);
 	if (r == 0) {
 		printf("[+] SK_LOOKUP program unloaded\n");
 	} else {
