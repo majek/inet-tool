@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
 	}
 
 	inet_open_verify_maps(state, 0);
+	inet_open_verify_link(state);
 
 	if (command == CMD_LOAD) {
 		inet_load(state);
