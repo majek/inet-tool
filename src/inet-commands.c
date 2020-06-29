@@ -57,7 +57,7 @@ void inet_load(struct state *state)
 		struct bpf_map_def *def = ebpf_maps[map_pos];
 		char map_name[PATH_MAX];
 		snprintf(map_name, sizeof(map_name), "%s%s",
-			 state->sys_fs_map_prefix, ebpf_maps_names[map_pos]);
+			 state->sys_fs_obj_prefix, ebpf_maps_names[map_pos]);
 
 		int map_fd = state->map_fds[map_pos];
 		if (map_fd == 0) {
@@ -146,7 +146,7 @@ void inet_open_verify_maps(struct state *state, int all_needed)
 		struct bpf_map_def *def = ebpf_maps[map_pos];
 		char map_name[PATH_MAX];
 		snprintf(map_name, sizeof(map_name), "%s%s",
-			 state->sys_fs_map_prefix, ebpf_maps_names[map_pos]);
+			 state->sys_fs_obj_prefix, ebpf_maps_names[map_pos]);
 
 		/* 1. try to reuse already opened maps */
 		int map_fd = state->map_fds[map_pos];
@@ -311,7 +311,7 @@ int inet_unload(struct state *state)
 	for (map_pos = 0; map_pos < ebpf_maps_sz; map_pos++) {
 		char map_name[PATH_MAX];
 		snprintf(map_name, sizeof(map_name), "%s%s",
-			 state->sys_fs_map_prefix, ebpf_maps_names[map_pos]);
+			 state->sys_fs_obj_prefix, ebpf_maps_names[map_pos]);
 
 		r = unlink(map_name);
 		if (r == 0) {

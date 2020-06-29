@@ -15,7 +15,7 @@
 
 /* inet-tool.c */
 struct state {
-	char sys_fs_map_prefix[256];
+	char sys_fs_obj_prefix[256];
 
 	int map_fds[128];
 

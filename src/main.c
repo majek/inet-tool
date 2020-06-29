@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		PFATAL("open(/proc/self/ns/net)");
 	}
 
-	snprintf(state->sys_fs_map_prefix, sizeof(state->sys_fs_map_prefix),
+	snprintf(state->sys_fs_obj_prefix, sizeof(state->sys_fs_obj_prefix),
 		 "/sys/fs/bpf/%lu_", net_ns_inode);
 
 	bump_memlimit();
