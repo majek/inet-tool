@@ -15,8 +15,8 @@
 
 /* inet-tool.c */
 struct state {
-	char sys_fs_map_prefix[256];
-
+	char sys_fs_obj_prefix[256];
+	int link_fd;
 	int map_fds[128];
 
 	char *unix_path;
@@ -34,6 +34,7 @@ int inet_unload(struct state *state);
 int inet_prog_info(struct state *state);
 int inet_prog_verify(void);
 void inet_open_verify_maps(struct state *state, int all_needed);
+void inet_open_verify_link(struct state *state);
 
 void inet_list(struct state *state);
 void inet_register(struct state *state, char **fdnames, char **srvnames);

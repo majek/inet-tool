@@ -1,4 +1,5 @@
 from . import base
+import errno
 
 
 class BasicTest(base.TestCase):
@@ -46,7 +47,7 @@ class BasicTest(base.TestCase):
         self.assertEqual(rc, 0)
 
         p = base.inet_tool('unload')
-        self.assertIn("SK_LOOKUP program unloaded", p.stdout_line())
+        self.assertIn("Unpinned SK_LOOKUP link", p.stdout_line())
         rc = p.close()
         self.assertEqual(rc, 0)
 
@@ -56,9 +57,9 @@ class BasicTest(base.TestCase):
         self.assertEqual(rc, 1)
 
         p = base.inet_tool('unload')
-        self.assertIn("Failed to unload SK_LOOKUP: No such", p.stdout_line())
+        self.assertIn("Failed to unpin SK_LOOKUP link", p.stdout_line())
         rc = p.close()
-        self.assertEqual(rc, 1)
+        self.assertEqual(rc, errno.ENOENT)
 
 
     def test_basic_tcp_bind(self):
@@ -220,7 +221,7 @@ class BasicTest(base.TestCase):
         base.inet_tool('unbind 6 [8000:]/1:0').close()
 
 
-    def test_basic_tcp_regiser(self):
+    def test_basic_tcp_register(self):
         ''' Verify if register and command work '''
         base.inet_tool('load').close()
         base.inet_tool('bind 6 127.0.0.1:1234 x').close()

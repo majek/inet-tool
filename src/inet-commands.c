@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -34,6 +35,8 @@ char *ebpf_maps_names[] = {
 	"srvname_map",
 };
 
+const char *ebpf_link_name = "sk_lookup_link";
+
 extern size_t bpf_insn_sk_lookup_cnt;
 extern struct bpf_insn bpf_insn_sk_lookup[];
 extern struct tbpf_reloc bpf_reloc_sk_lookup[];
@@ -57,7 +60,7 @@ void inet_load(struct state *state)
 		struct bpf_map_def *def = ebpf_maps[map_pos];
 		char map_name[PATH_MAX];
 		snprintf(map_name, sizeof(map_name), "%s%s",
-			 state->sys_fs_map_prefix, ebpf_maps_names[map_pos]);
+			 state->sys_fs_obj_prefix, ebpf_maps_names[map_pos]);
 
 		int map_fd = state->map_fds[map_pos];
 		if (map_fd == 0) {
@@ -120,21 +123,42 @@ void inet_load(struct state *state)
 		PFATAL("Bpf Log:\n%s\n bpf(BPF_PROG_LOAD)", log_buf);
 	}
 
-	int r = bpf_prog_attach(bpf_prog, 0, BPF_SK_LOOKUP, 0);
-	if (r) {
-		if (errno == EEXIST) {
-			fprintf(stderr,
-				"[-] Unloading previous SK_LOOKUP "
-				"program\n");
-			// BPF_F_ALLOW_OVERRIDE doesn't work
-			bpf_prog_detach2(0, 0, BPF_SK_LOOKUP);
+	/* link create/update */
+	char link_name[PATH_MAX];
+	snprintf(link_name, sizeof(link_name), "%s%s",
+		 state->sys_fs_obj_prefix, ebpf_link_name);
 
-			/* Try again */
-			r = bpf_prog_attach(bpf_prog, 0, BPF_SK_LOOKUP, 0);
+	if (state->link_fd < 0) {
+		/* link doesn't exist, create it */
+		int netns_fd = open("/proc/self/ns/net", O_RDONLY);
+		if (netns_fd < 0) {
+			PFATAL("open(/proc/self/ns/net)");
 		}
+
+		DECLARE_LIBBPF_OPTS(bpf_link_create_opts, opts);
+		int link_fd = bpf_link_create(bpf_prog, netns_fd, BPF_SK_LOOKUP, &opts);
+		if (link_fd < 0) {
+			PFATAL("bpf_link_create(BPF_SK_LOOKUP)");
+		}
+
+		int r = bpf_obj_pin(link_fd, link_name);
 		if (r) {
-			PFATAL("bpf(BPF_ATTACH, BPF_SK_LOOKUP)");
+			PFATAL("bpf_obj_pin(%s)", link_name);
 		}
+
+		state->link_fd = link_fd;
+		close(netns_fd);
+
+		fprintf(stderr, "[+] Created link %s\n", link_name);
+	} else {
+		/* link already exists, update it */
+		DECLARE_LIBBPF_OPTS(bpf_link_update_opts, opts);
+		int r = bpf_link_update(state->link_fd, bpf_prog, &opts);
+		if (r) {
+			PFATAL("bpf_link_update");
+		}
+
+		fprintf(stderr, "[+] Updated link %s\n", link_name);
 	}
 	printf("SK_LOOKUP program loaded\n");
 }
@@ -146,7 +170,7 @@ void inet_open_verify_maps(struct state *state, int all_needed)
 		struct bpf_map_def *def = ebpf_maps[map_pos];
 		char map_name[PATH_MAX];
 		snprintf(map_name, sizeof(map_name), "%s%s",
-			 state->sys_fs_map_prefix, ebpf_maps_names[map_pos]);
+			 state->sys_fs_obj_prefix, ebpf_maps_names[map_pos]);
 
 		/* 1. try to reuse already opened maps */
 		int map_fd = state->map_fds[map_pos];
@@ -194,6 +218,50 @@ void inet_open_verify_maps(struct state *state, int all_needed)
 		}
 		state->map_fds[map_pos] = map_fd;
 	}
+}
+
+void inet_open_verify_link(struct state *state)
+{
+	char link_name[PATH_MAX];
+	snprintf(link_name, sizeof(link_name), "%s%s",
+		 state->sys_fs_obj_prefix, ebpf_link_name);
+
+	/* 1. try to open pinned link */
+	int link_fd = bpf_obj_get(link_name);
+
+	/* 2. ignore if link doesn't exist, will create it on "load",
+	 *    fail otherwise */
+	if (link_fd < 0) {
+		if (errno == ENOENT) {
+			link_fd = -1;
+			goto out;
+		}
+		PFATAL("bpf_obj_get(%s)", link_name);
+	}
+
+	struct stat st;
+	int r = stat("/proc/self/ns/net", &st);
+	if (r < 0) {
+		PFATAL("stat(/proc/self/ns/net)");
+	}
+
+	/* 3. verify existing link info */
+	struct bpf_link_info info = {};
+	uint32_t info_sz = sizeof(struct bpf_link_info);
+	r = bpf_obj_get_info_by_fd(link_fd, &info, &info_sz);
+
+	if (info.type != BPF_LINK_TYPE_NETNS ||
+	    info.netns.attach_type != BPF_SK_LOOKUP ||
+	    info.netns.netns_ino != st.st_ino ||
+	    !info.id || !info.prog_id) {
+		fprintf(stderr,
+			"[!] Link %s info is not as expected."
+			"Remove the link file first\n",
+			link_name);
+		exit(-1);
+	}
+out:
+	state->link_fd = link_fd;
 }
 
 struct prog_info {
@@ -298,42 +366,31 @@ int inet_prog_verify()
 int inet_unload(struct state *state)
 {
 	int return_code = 0;
-	int fd = open("/proc/self/ns/net", O_RDONLY);
-	if (fd < 0) {
-		PFATAL("open(/proc/self/ns/net)");
-	}
 
-	uint32_t attach_flags = 0;
-	uint32_t prog_ids[1] = {0};
-	uint32_t prog_cnt = 1;
+	char link_name[PATH_MAX];
+	snprintf(link_name, sizeof(link_name), "%s%s",
+		 state->sys_fs_obj_prefix, ebpf_link_name);
 
-	int r = bpf_prog_query(fd, BPF_SK_LOOKUP, 0, &attach_flags, prog_ids,
-			       &prog_cnt);
-	if (r) {
-		PFATAL("bpf(PROG_QUERY, BPF_SK_LOOKUP)");
-	}
-	close(fd);
-
-	// BPF_F_ALLOW_OVERRIDE doesn't work
-	r = bpf_prog_detach2(0, 0, BPF_SK_LOOKUP);
+	int r = unlink(link_name);
 	if (r == 0) {
-		printf("[+] SK_LOOKUP program unloaded\n");
+		printf("[+] Unpinned SK_LOOKUP link %s\n", link_name);
 	} else {
-		printf("[-] Failed to unload SK_LOOKUP: %s\n",
+		printf("[-] Failed to unpin SK_LOOKUP link %s: %s\n", link_name,
 		       strerror(errno));
-		return_code = 1;
+		return_code = errno;
 	}
+
 	int map_pos;
 	for (map_pos = 0; map_pos < ebpf_maps_sz; map_pos++) {
 		char map_name[PATH_MAX];
 		snprintf(map_name, sizeof(map_name), "%s%s",
-			 state->sys_fs_map_prefix, ebpf_maps_names[map_pos]);
+			 state->sys_fs_obj_prefix, ebpf_maps_names[map_pos]);
 
 		r = unlink(map_name);
 		if (r == 0) {
 			printf("[+] Unpinned map %s\n", map_name);
 		} else {
-			printf("[-] Failed to unlink map %s: %s\n", map_name,
+			printf("[-] Failed to unpin map %s: %s\n", map_name,
 			       strerror(errno));
 		}
 	}
