@@ -14,11 +14,6 @@
 SEC("sk_lookup")
 int _sk_lookup(struct bpf_sk_lookup *ctx)
 {
-	/* Force 32 bit loads from context, to avoid eBPF "ctx modified"
-	 * messages */
-	volatile __u32 protocol = ctx->protocol;
-	volatile __u32 local_port = ctx->local_port;
-
 	/* /32 and /128 */
 	struct ip laddr_full = {};
 	if (ctx->family == AF_INET) {
@@ -26,22 +21,20 @@ int _sk_lookup(struct bpf_sk_lookup *ctx)
 		laddr_full.ip_as_w[3] = ctx->local_ip4;
 	}
 	if (ctx->family == AF_INET6) {
-		/* eBPF voodoo. Must be unordered otherwise some
-		 * optimization breaks the generated bpf. */
-		laddr_full.ip_as_w[3] = ctx->local_ip6[3];
 		laddr_full.ip_as_w[0] = ctx->local_ip6[0];
 		laddr_full.ip_as_w[1] = ctx->local_ip6[1];
 		laddr_full.ip_as_w[2] = ctx->local_ip6[2];
+		laddr_full.ip_as_w[3] = ctx->local_ip6[3];
 	}
 
 	struct addr lookup_keys[] = {
 		{
-			.protocol = protocol,
-			.port = local_port,
+			.protocol = ctx->protocol,
+			.port = ctx->local_port,
 			.addr = laddr_full,
 		},
 		{
-			.protocol = protocol,
+			.protocol = ctx->protocol,
 			.port = 0,
 			.addr = laddr_full,
 		},
@@ -75,7 +68,7 @@ int _sk_lookup(struct bpf_sk_lookup *ctx)
 					  * bound to the address/port reserved
 					  * for this service.
 					  */
-					return BPF_DROP;
+					return SK_DROP;
 				}
 				int err = bpf_sk_assign(ctx, sk, 0);
 				if (err) {
@@ -86,15 +79,15 @@ int _sk_lookup(struct bpf_sk_lookup *ctx)
 					 * to. Service misconfigured.
 					 */
 					bpf_sk_release(sk);
-					return BPF_DROP;
+					return SK_DROP;
 				}
 
 				/* Found and selected a suitable socket. Direct
 				 * the incoming connection to it. */
 				bpf_sk_release(sk);
-				return BPF_REDIRECT;
+				return SK_PASS;
 			}
 		}
 	}
-	return BPF_OK;
+	return SK_PASS;
 }
